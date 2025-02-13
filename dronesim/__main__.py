@@ -21,10 +21,11 @@ pygame.font.init()
 
 MIN_THRUST = 0.
 MAX_THRUST = 1.5
+DEFAULT_POSITION = np.array([0., 0., 20.])
 
 dp = DronePhysics()
 dp.motors = np.array([0.] * 4)
-dp.position = np.array([0., 0., 20.])
+dp.position = DEFAULT_POSITION.copy()
 dp.angular_velocity = Rotation.from_rotvec(np.array([0., 0., 0.]))
 motor_color = (250, 100, 90)
 motor_sliders = [
@@ -34,10 +35,11 @@ motor_sliders = [
         minimum=MIN_THRUST,
         maximum=MAX_THRUST,
         value=GRAVITY * dp.mass / 4,
-        width=300,
+        width=550,
         height=50,
         decimal_places=2,
-        rendered_text=pygame.font.SysFont('sans-serif', 25).render(f'Motor {i}', True, motor_color, (255, 255, 255))
+        rendered_text=pygame.font.SysFont('sans-serif', 25).render(f'Motor {i}', True, motor_color, (255, 255, 255)),
+        value_renderer=lambda x: pygame.font.SysFont('sans-serif', 16).render(f'{1000 * x:.3f} (Δ={abs(1000 * (x - dp.motors[0])):.3f})', True, motor_color, (255, 255, 255))
     ) for i in range(4)
 ]
 
@@ -46,12 +48,13 @@ adr_slider = Slider(
     color=adr_color,
     deactivated_color=(100, 100, 100),
     minimum=0.,
-    maximum=.01,
+    maximum=.001,
     value=0.,
-    width=300,
+    width=550,
     height=50,
     decimal_places=2,
-    rendered_text=pygame.font.SysFont('sans-serif', 25).render(f'ADR', True, adr_color, (255, 255, 255))
+    rendered_text=pygame.font.SysFont('sans-serif', 25).render(f'ADA', True, adr_color, (255, 255, 255)),
+    value_renderer=lambda x: pygame.font.SysFont('sans-serif', 20).render(f'{100*x:.3f} %', True, adr_color, (255, 255, 255))
 )
 print(dp)
 
@@ -61,7 +64,7 @@ screen.set_colorkey((0, 255, 0))
 am = AssetManager()
 
 pos_control = Controller(1.3, 1.8, .2, 3)
-vel_control = Controller(2., .3, 1.2, 3)
+vel_control = Controller(2., .1, 1.2, 3)
 ang_control = Controller(4., 3, .1, 3)
 speed = np.zeros(3, dtype=np.float64)
 
@@ -76,7 +79,7 @@ while 1:
     old_time = new_time
     print(dp)
     print(f'{1/dt:.2f} Hz')
-    sliderx = 750
+    sliderx = screen.get_width() - 550
     
     
     for evt in pygame.event.get():
@@ -107,6 +110,8 @@ while 1:
                 speed[2] += +3. * effect
             elif evt.key == pygame.K_e:
                 speed[2] += -3. * effect
+            elif evt.key == pygame.K_r:
+                dp.position = DEFAULT_POSITION.copy()
         """ elif evt.type == pygame.KEYUP:
             if evt.key == pygame.K_UP:
                 desired_position[1] -= +1.
@@ -130,7 +135,7 @@ while 1:
     for slider in motor_sliders:
         screen.blit(slider.render(), (sliderx, slidery))
         slidery += 50
-    #screen.blit(adr_slider.render(), (sliderx, slidery))
+    screen.blit(adr_slider.render(), (sliderx, slidery))
     for i, slider in enumerate(motor_sliders):
         dp.motors[i] = slider.value
     dp.air_density_randomness = adr_slider.value
