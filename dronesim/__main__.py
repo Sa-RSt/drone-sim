@@ -6,6 +6,7 @@ from time import perf_counter, sleep
 import subprocess
 from dronesim import drone_display
 from dronesim.slider import Slider
+from dronesim.clock import Clock
 from dronesim.pid import Controller
 from scipy.spatial.transform import Rotation
 from enum import Enum
@@ -14,6 +15,7 @@ import seaborn as sns
 import pandas as pd
 import matplotlib.pyplot as plt
 import datetime
+from dronesim.print_worker import PrintWorker
 
 
 class Mode(Enum):
@@ -26,64 +28,107 @@ def make_lists(n):
         yield []
 
 
+def create_default_dp() -> DronePhysics:
+    dp = DronePhysics()
+    dp.motors = np.array([0.] * 4)
+    dp.position = DEFAULT_POSITION.copy()
+    dp.angular_velocity = Rotation.from_rotvec(np.array([0., 0., 0.]))
+    return dp
+
+
+def create_motor_sliders(dp: DronePhysics) -> list[Slider]:
+    motor_color = (250, 100, 90)
+    motor_sliders = [
+        Slider(
+            color=motor_color,
+            deactivated_color=(100, 100, 100),
+            minimum=MIN_THRUST,
+            maximum=MAX_THRUST,
+            value=GRAVITY * dp.mass / 4,
+            width=550,
+            height=50,
+            decimal_places=2,
+            rendered_text=pygame.font.SysFont(
+                'sans-serif', 25).render(f'Motor {i+1}', True, motor_color, (255, 255, 255)),
+            value_renderer=lambda x: pygame.font.SysFont('sans-serif', 16).render(
+                f'{1000 * x:.3f} (Δ={abs(1000 * (x - dp.motors[0])):.3f})', True, motor_color, (255, 255, 255))
+        ) for i in range(4)
+    ]
+    return motor_sliders
+
+
+def create_adr_slider() -> Slider:
+    adr_color = (90, 100, 250)
+    adr_slider = Slider(
+        color=adr_color,
+        deactivated_color=(100, 100, 100),
+        minimum=0.,
+        maximum=.001,
+        value=0.,
+        width=550,
+        height=50,
+        decimal_places=2,
+        rendered_text=pygame.font.SysFont(
+            'sans-serif', 25).render(f'ADA', True, adr_color, (255, 255, 255)),
+        value_renderer=lambda x: pygame.font.SysFont(
+            'sans-serif', 20).render(f'{100*x:.3f} %', True, adr_color, (255, 255, 255))
+    )
+    return adr_slider
+
+
+def create_mi_slider() -> Slider:
+    mi_color = (127, 70, 127)
+    mi_slider = Slider(
+        color=mi_color,
+        deactivated_color=(100, 100, 100),
+        minimum=0.,
+        maximum=.01,
+        value=0.,
+        width=550,
+        height=50,
+        decimal_places=2,
+        rendered_text=pygame.font.SysFont(
+            'sans-serif', 25).render(f'ADM', True, mi_color, (255, 255, 255)),
+        value_renderer=lambda x: pygame.font.SysFont(
+            'sans-serif', 20).render(f'{100*x:.3f} %', True, mi_color, (255, 255, 255))
+    )
+    return mi_slider
+
+
+def create_controllers() -> tuple[Controller, Controller, Controller]:
+    pos_control = Controller(1.3, 1.8, .2, 1., 3)
+    vel_control = Controller(.9, .4, .8, 4., 3)
+    ang_control = Controller(4., 3.7, .1, .1, 3)
+    return pos_control, vel_control, ang_control
+
+
 pygame.display.init()
 pygame.font.init()
 sns.set_style('whitegrid')
+
+clock = Clock()
+
+pw = PrintWorker()
+pw.start()
 
 MIN_THRUST = 0.
 MAX_THRUST = 1.5
 DEFAULT_POSITION = np.array([0., 0., 20.])
 OUTPUT_FOLDER = Path(__file__).parent.parent / 'out'
 
-OUTPUT_FOLDER.mkdir(exist_ok=True)
+dp = create_default_dp()
+motor_sliders = create_motor_sliders(dp)
+adr_slider = create_adr_slider()
+mi_slider = create_mi_slider()
 
-dp = DronePhysics()
-dp.motors = np.array([0.] * 4)
-dp.position = DEFAULT_POSITION.copy()
-dp.angular_velocity = Rotation.from_rotvec(np.array([0., 0., 0.]))
-motor_color = (250, 100, 90)
-motor_sliders = [
-    Slider(
-        color=motor_color,
-        deactivated_color=(100, 100, 100),
-        minimum=MIN_THRUST,
-        maximum=MAX_THRUST,
-        value=GRAVITY * dp.mass / 4,
-        width=550,
-        height=50,
-        decimal_places=2,
-        rendered_text=pygame.font.SysFont(
-            'sans-serif', 25).render(f'Motor {i+1}', True, motor_color, (255, 255, 255)),
-        value_renderer=lambda x: pygame.font.SysFont('sans-serif', 16).render(
-            f'{1000 * x:.3f} (Δ={abs(1000 * (x - dp.motors[0])):.3f})', True, motor_color, (255, 255, 255))
-    ) for i in range(4)
-]
 
-adr_color = (90, 100, 250)
-adr_slider = Slider(
-    color=adr_color,
-    deactivated_color=(100, 100, 100),
-    minimum=0.,
-    maximum=.001,
-    value=0.,
-    width=550,
-    height=50,
-    decimal_places=2,
-    rendered_text=pygame.font.SysFont(
-        'sans-serif', 25).render(f'ADA', True, adr_color, (255, 255, 255)),
-    value_renderer=lambda x: pygame.font.SysFont(
-        'sans-serif', 20).render(f'{100*x:.3f} %', True, adr_color, (255, 255, 255))
-)
-print(dp)
+pw.print(dp)
 
 screen = pygame.display.set_mode((1137, 840))
-screen.set_colorkey((0, 255, 0))
 
 am = AssetManager()
 
-pos_control = Controller(1.3, 1.8, .2, 3)
-vel_control = Controller(2., .1, 1.2, 3)
-ang_control = Controller(4., 3, .1, 3)
+pos_control, vel_control, ang_control = create_controllers()
 speed = np.zeros(3, dtype=np.float64)
 
 mode = Mode.MANUAL
@@ -126,14 +171,19 @@ paused_surf.fill((0, 0, 0, 50))
 old_time = perf_counter()
 effect = .1
 paused = False
+high_precision = False
 while 1:
     new_time = perf_counter()
-    dt = new_time - old_time
+    actual_time_difference = new_time - old_time
+    if high_precision:
+        dt = .001  # 1 ms
+    else:
+        dt = actual_time_difference
+    pw.print(dp)
     if not paused:
         dp.tick(dt)
+        pw.print(f'{clock.tick(dt, actual_time_difference):.2f} Hz')
     old_time = new_time
-    print(dp)
-    print(f'{1/dt:.2f} Hz')
 
     if recording_start is not None:
         rec_t.append(new_time - recording_start)
@@ -164,6 +214,7 @@ while 1:
             slider.tick(sliderx, slidery, evt)
             slidery += 50
         adr_slider.tick(sliderx, slidery, evt)
+        mi_slider.tick(sliderx, slidery + 50, evt)
         if evt.type == pygame.QUIT:
             exit()
         elif evt.type == pygame.KEYDOWN:
@@ -189,13 +240,24 @@ while 1:
                 speed[2] += -3. * effect
             elif evt.key == pygame.K_r:
                 dp.position = DEFAULT_POSITION.copy()
+            elif evt.key == pygame.K_BACKSPACE:
+                dp = create_default_dp()
+                motor_sliders = create_motor_sliders(dp)
+                adr_slider = create_adr_slider()
+                mi_slider = create_mi_slider()
+                pos_control, vel_control, ang_control = create_controllers()
+                clock.reset()
             elif evt.key == pygame.K_x:
                 paused = not paused
+            elif evt.key == pygame.K_h:
+                high_precision = not high_precision
             elif evt.key == pygame.K_SPACE:
                 if recording_start is None:
                     recording_start = perf_counter()
                 else:
+                    paused = True
                     recording_start = None
+                    OUTPUT_FOLDER.mkdir(exist_ok=True)
                     now = datetime.datetime.now().isoformat().replace(
                         ':', '_').replace('/', '_').replace('.', '_')
                     tf = pd.Series(rec_t).to_frame('Tempo (s)')
@@ -229,9 +291,11 @@ while 1:
         screen.blit(slider.render(), (sliderx, slidery))
         slidery += 50
     screen.blit(adr_slider.render(), (sliderx, slidery))
+    screen.blit(mi_slider.render(), (sliderx, slidery + 50))
     for i, slider in enumerate(motor_sliders):
         dp.motors[i] = slider.value
     dp.air_density_randomness = adr_slider.value
+    dp.motor_imperfections_scale = mi_slider.value
 
     if not paused:
         if mode == Mode.PID:
@@ -285,4 +349,8 @@ while 1:
         screen.blit(recording_surf, (10, 10))
     if paused:
         screen.blit(paused_surf, (0, 0))
+    
+    clocktext = pygame.font.SysFont('monospace', 20).render(repr(clock), True, (0, 0, 0), (255, 255, 255))
+    screen.blit(clocktext, (screen.get_width() - clocktext.get_width() - 10, screen.get_height() - clocktext.get_height() - 10))
+    
     pygame.display.flip()

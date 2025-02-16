@@ -2,10 +2,11 @@ import numpy as np
 
 class Controller():
 
-    def __init__(self, Kp: float, Kd: float, Ki: float, n: int):
+    def __init__(self, Kp: float, Kd: float, Ki: float, Kisat: float, n: int):
         self.Kp = Kp
         self.Kd = Kd
         self.Ki = Ki
+        self.Kisat = Kisat
         
         # Integration total
         self.int = np.zeros(n, dtype=np.float64)
@@ -18,8 +19,8 @@ class Controller():
         self.previous_error = error.copy()
 
         ni = np.linalg.norm(self.int)
-        if ni > .5:
-            self.int = .5 * self.int / ni
+        if ni > self.Kisat:
+            self.int = self.Kisat * self.int / ni
         if dbg:
             print(f'{self.Kp * error=}')
             print(f'{self.Ki * self.int=}')

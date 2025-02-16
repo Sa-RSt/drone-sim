@@ -42,11 +42,11 @@ class Slider:
 
     def tick(self, x: int, y: int, event: pygame.event.Event) -> None:
         area = pygame.Rect(x, y, self.width, self.height)
-        if event.type == pygame.MOUSEBUTTONDOWN and event.button == pygame.BUTTON_LEFT and area.collidepoint(event.pos):
+        if event.type == pygame.MOUSEBUTTONDOWN and event.button == pygame.BUTTON_LEFT and area.collidepoint(event.pos) and self.enabled:
             self.dragging = True
         elif event.type == pygame.MOUSEBUTTONUP and event.button == pygame.BUTTON_LEFT:
             self.dragging = False
-        elif event.type == pygame.MOUSEMOTION and self.dragging:
+        elif event.type == pygame.MOUSEMOTION and self.dragging and self.enabled:
             min_x = self._slider_start()
             max_x = self._slider_end()
             mouse_x = pygame.mouse.get_pos()[0]

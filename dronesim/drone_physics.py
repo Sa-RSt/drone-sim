@@ -19,12 +19,13 @@ class DronePhysics:
         self.resistive_drag = 0.015
         self.radius = .15
         self.air_density_randomness = 0.
+        self.motor_imperfections = np.random.random(4)
+        self.motor_imperfections_scale = 0.
         self._start = perf_counter()
 
     def total_force(self, dt, densities) -> np.ndarray:
-        #print(self.motors)
         grav = np.array([0., 0., -self.mass * GRAVITY])
-        modulus = np.dot(self.motors, densities)
+        modulus = np.dot(self.motors, densities) + (self.motor_imperfections_scale * self.motor_imperfections).sum()
         normal = self.rot.apply(np.array([0., 0., modulus]))
         vsquared = np.dot(self.velocity, self.velocity)
         if abs(vsquared) > 1e-9:
@@ -40,8 +41,7 @@ class DronePhysics:
 
     def total_torque(self, dt, densities) -> np.ndarray:
         base = self.radius * np.array([-np.sqrt(2)/2, np.sqrt(2)/2, 0.])
-        forces = self.motors * densities
-        print(forces)
+        forces = self.motors * densities + self.motor_imperfections * self.motor_imperfections_scale
         r0 = self.rot.apply(Rotation.from_euler('xyz', (0, 0, 0)).apply(base))
         r1 = self.rot.apply(Rotation.from_euler('xyz', (0, 0, -np.pi/2)).apply(base))
         r2 = self.rot.apply(Rotation.from_euler('xyz', (0, 0, -np.pi)).apply(base))
