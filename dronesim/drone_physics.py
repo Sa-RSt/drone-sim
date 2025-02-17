@@ -50,7 +50,8 @@ class DronePhysics:
         f1 = self.rot.apply(Rotation.from_euler('xyz', (0, 0, -np.pi/2)).apply(np.array([0., 0., forces[1]])))
         f2 = self.rot.apply(Rotation.from_euler('xyz', (0, 0, -np.pi)).apply(np.array([0., 0., forces[2]])))
         f3 = self.rot.apply(Rotation.from_euler('xyz', (0, 0, -3*np.pi/2)).apply(np.array([0., 0., forces[3]])))
-        motor_torque = np.cross(r0.ravel(), f0.ravel()) + np.cross(r1.ravel(), f1.ravel()) + np.cross(r2.ravel(), f2.ravel()) + np.cross(r3.ravel(), f3.ravel())
+        motor_xy_torque = np.cross(r0.ravel(), f0.ravel()) + np.cross(r1.ravel(), f1.ravel()) + np.cross(r2.ravel(), f2.ravel()) + np.cross(r3.ravel(), f3.ravel())
+        motor_z_torque = .01 * (-forces[0] + forces[1] - forces[2] + forces[3])
         rv = self.angular_velocity.as_rotvec()
         omega2 = np.dot(rv, rv)
         if abs(omega2) > 1e-9:
@@ -62,7 +63,7 @@ class DronePhysics:
         else:
             air_res = 0.
             air_res_dir = np.zeros(3)
-        return motor_torque + air_res * air_res_dir
+        return motor_xy_torque + air_res * air_res_dir + Rotation.from_euler('xyz', (0, 0, motor_z_torque)).as_rotvec()
 
     def tick(self, dt):
         densities = 1. + self.air_density_randomness * opensimplex.noise2array(np.linspace(0, 4*self.radius, 4), np.array([perf_counter()*4] * 4))[0]

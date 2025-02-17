@@ -321,18 +321,18 @@ while 1:
             rv = Rotation.from_euler('xyz', (xangle, yangle, 0)).as_rotvec()
             angular_acc = Rotation.from_rotvec(
                 ang_control.feedback(rv - dp.rot.as_rotvec(), dt))
-            xacc, yacc, _ = angular_acc.as_euler('xyz')
+            xacc, yacc, zacc = angular_acc.as_euler('xyz')
             thrust = linear_acc[2] * dp.mass / 4
             I = dp.moment_of_inertia
             dp.motors = np.array([
                 max(min(thrust + I*xacc/dp.radius/2 + I *
-                    yacc/dp.radius/2, MAX_THRUST), MIN_THRUST),
+                    yacc/dp.radius/2 - 25 * I * zacc, MAX_THRUST), MIN_THRUST),
                 max(min(thrust + I*xacc/dp.radius/2 - I *
-                    yacc/dp.radius/2, MAX_THRUST), MIN_THRUST),
+                    yacc/dp.radius/2 + 25 * I * zacc, MAX_THRUST), MIN_THRUST),
                 max(min(thrust - I*xacc/dp.radius/2 - I *
-                    yacc/dp.radius/2, MAX_THRUST), MIN_THRUST),
+                    yacc/dp.radius/2 - 25 * I * zacc, MAX_THRUST), MIN_THRUST),
                 max(min(thrust - I*xacc/dp.radius/2 + I *
-                    yacc/dp.radius/2, MAX_THRUST), MIN_THRUST)
+                    yacc/dp.radius/2 + 25 * I * zacc, MAX_THRUST), MIN_THRUST)
             ])
             for i, slider in enumerate(motor_sliders):
                 slider.value = dp.motors[i]
