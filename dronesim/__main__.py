@@ -186,7 +186,7 @@ while 1:
     old_time = new_time
 
     if recording_start is not None:
-        rec_t.append(new_time - recording_start)
+        rec_t.append(clock.duration - recording_start)
         rec_x.append(dp.position[0])
         rec_y.append(dp.position[1])
         rec_z.append(dp.position[2])
@@ -253,7 +253,7 @@ while 1:
                 high_precision = not high_precision
             elif evt.key == pygame.K_SPACE:
                 if recording_start is None:
-                    recording_start = perf_counter()
+                    recording_start = clock.duration
                 else:
                     paused = True
                     recording_start = None
@@ -275,6 +275,7 @@ while 1:
                         ax.set_title(title)
                         fig.savefig(
                             (OUTPUT_FOLDER / f'{title} - {now}').with_suffix('.png'))
+                        pd.DataFrame({'t': rec_t, 'v': charts[0][1]}).to_csv((OUTPUT_FOLDER / f'{title} - {now}').with_suffix('.csv'))
 
         elif evt.type == pygame.KEYUP:
             if evt.key == pygame.K_LSHIFT:

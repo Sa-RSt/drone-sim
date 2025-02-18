@@ -11,6 +11,7 @@ opencv-python==4.11.0.86
 opensimplex==0.4.5.1
 packaging==24.2
 pandas==2.2.3
+patsy==1.0.1
 pillow==11.1.0
 pygame==2.6.1
 pyparsing==3.2.1
@@ -19,5 +20,6 @@ pytz==2025.1
 scipy==1.15.1
 seaborn==0.13.2
 six==1.17.0
+statsmodels==0.14.4
 tifffile==2025.1.10
 tzdata==2025.1
