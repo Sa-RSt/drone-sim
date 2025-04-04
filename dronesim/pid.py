@@ -10,11 +10,13 @@ class Controller():
         
         # Integration total
         self.int = np.zeros(n, dtype=np.float64)
-        self.previous_error = np.zeros(n, dtype=np.float64)
+        self.previous_error = None
 
     def feedback(self, error: np.ndarray, dt: float, dedt: float | None=None, dbg=False) -> np.ndarray:
         self.int += error * dt
         if dedt is None:
+            if self.previous_error is None:
+                self.previous_error = error.copy()
             dedt = (error - self.previous_error) / dt
         self.previous_error = error.copy()
 

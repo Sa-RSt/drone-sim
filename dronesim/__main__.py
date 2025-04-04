@@ -302,7 +302,7 @@ while 1:
         if mode == Mode.PID:
             pos_error = speed - dp.velocity
             m_pos_error = np.linalg.norm(pos_error)
-            if m_pos_error > 3:
+            if m_pos_error > 4:
                 pos_error = 4 * pos_error / m_pos_error
             linear_acc = vel_control.feedback(
                 pos_error, dt) + np.array([0., 0., GRAVITY])

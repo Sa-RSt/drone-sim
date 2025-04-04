@@ -22,6 +22,7 @@ class DronePhysics:
         self.motor_imperfections = np.random.random(4)
         self.motor_imperfections_scale = 0.
         self._start = perf_counter()
+        self.densities = 1. + self.air_density_randomness * opensimplex.noise2array(np.linspace(0, 4*self.radius, 4), np.array([perf_counter()*4] * 4))[0]
 
     def total_force(self, dt, densities) -> np.ndarray:
         grav = np.array([0., 0., -self.mass * GRAVITY])
@@ -66,10 +67,10 @@ class DronePhysics:
         return motor_xy_torque + air_res * air_res_dir + Rotation.from_euler('xyz', (0, 0, motor_z_torque)).as_rotvec()
 
     def tick(self, dt):
-        densities = 1. + self.air_density_randomness * opensimplex.noise2array(np.linspace(0, 4*self.radius, 4), np.array([perf_counter()*4] * 4))[0]
+        self.densities = 1. + self.air_density_randomness * opensimplex.noise2array(np.linspace(0, 4*self.radius, 4), np.array([perf_counter()*4] * 4))[0]
 
-        self.tick_linear(dt, densities)
-        self.tick_angular(dt, densities)
+        self.tick_linear(dt, self.densities)
+        self.tick_angular(dt, self.densities)
 
     def tick_linear(self, dt, densities):
         F = self.total_force(dt, densities)
